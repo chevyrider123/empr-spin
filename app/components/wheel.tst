@@ -1,109 +1,62 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-interface WheelProps {
+type WheelProps = {
   participants: string[];
-  winnerIndex: number;
+  winnerIndex: number | null;
   muted: boolean;
-}
+};
 
 export default function Wheel({ participants, winnerIndex, muted }: WheelProps) {
-  const [spinning, setSpinning] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const [finalIndex, setFinalIndex] = useState<number | null>(null);
+  const [angle, setAngle] = useState(0);
 
-  const sliceAngle = 360 / participants.length;
-
+  // Spin when we have a winner
   useEffect(() => {
-    if (spinning) {
-      // Calculate spin to land on winner
-      const winnerCenter = winnerIndex * sliceAngle + sliceAngle / 2;
-      const rawTarget = 360 - winnerCenter;
+    if (winnerIndex !== null && participants.length > 0) {
+      const slice = 360 / participants.length;
+      const winnerCenterDeg = winnerIndex * slice + slice / 2;
+      const rawTarget = 360 - winnerCenterDeg;
+
       const base = 6 * 360; // 6 full spins
-      const delta = ((rawTarget - (rotation % 360)) + 360) % 360;
-      const target = rotation + base + delta;
+      const delta = ((rawTarget - (angle % 360)) + 360) % 360;
+      const targetAngle = angle + base + delta;
 
-      setTimeout(() => {
-        setRotation(target);
-        setTimeout(() => {
-          setSpinning(false);
-          setFinalIndex(winnerIndex);
+      setAngle(targetAngle);
 
-          if (!muted) {
-            const audio = new Audio("/ding.mp3");
-            audio.play();
-          }
-
-          // Confetti
-          import("canvas-confetti").then((confetti) => {
-            confetti.default({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-          });
-        }, 4200);
-      }, 100);
+      if (!muted) {
+        const audio = new Audio("/click.mp3");
+        audio.play().catch(() => {});
+      }
     }
-  }, [spinning]);
+  }, [winnerIndex]);
 
   return (
-    <div className="relative flex flex-col items-center">
-      {/* Pointer */}
-      <div
-        className="absolute -top-6 w-0 h-0 border-l-[15px] border-r-[15px] border-b-[30px] border-transparent border-b-red-600"
-      />
+    <div className="relative">
+      {/* Pointer Triangle (faces down) */}
+      <div className="absolute top-[-20px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-r-[12px] border-b-[20px] border-l-transparent border-r-transparent border-b-red-600 z-10"></div>
 
       {/* Wheel */}
       <div
-        className="rounded-full border-4 border-green-700"
-        style={{
-          width: "400px",
-          height: "400px",
-          background: `conic-gradient(${participants
-            .map(
-              (p, i) =>
-                `${finalIndex === i ? "lightgreen" : i % 2 === 0 ? "#FFD700" : "#FF4500"} ${
-                  (i * sliceAngle).toFixed(2)
-                }deg ${(i + 1) * sliceAngle}deg`
-            )
-            .join(", ")})`,
-          transform: `rotate(${rotation}deg)`,
-          transition: spinning ? "transform 4.2s ease-out" : "none",
-        }}
+        className="w-72 h-72 rounded-full border-4 border-gray-800 flex items-center justify-center transition-transform duration-[4200ms] ease-out"
+        style={{ transform: `rotate(${angle}deg)` }}
       >
-        {/* Labels */}
         {participants.map((p, i) => {
-          const angle = (i + 0.5) * sliceAngle;
+          const slice = 360 / participants.length;
           return (
             <div
               key={i}
-              className="absolute text-xs font-bold text-black"
-              style={{
-                top: "50%",
-                left: "50%",
-                transform: `rotate(${angle}deg) translate(140px) rotate(-${angle}deg)`,
-                transformOrigin: "center",
-              }}
+              className={`absolute w-1/2 h-1/2 origin-bottom-left flex items-center justify-end pr-2 text-xs font-bold ${
+                winnerIndex === i ? "bg-green-400 text-white" : "bg-yellow-200"
+              }`}
+              style={{ transform: `rotate(${i * slice}deg) skewY(-${90 - slice}deg)` }}
             >
-              {p}
+              <span className="transform skewY(${90 - slice}deg) rotate(${slice / 2}deg)">
+                {p}
+              </span>
             </div>
           );
         })}
       </div>
-
-      {/* Spin button */}
-      <button
-        onClick={() => {
-          setSpinning(true);
-          setFinalIndex(null);
-        }}
-        className="mt-6 px-6 py-2 bg-green-600 text-white font-bold rounded-lg shadow"
-        disabled={spinning}
-      >
-        {spinning ? "Spinning..." : "Spin the Wheel"}
-      </button>
-
-      {/* Blinking light */}
-      {finalIndex !== null && (
-        <div className="absolute right-[-80px] top-1/2 animate-pulse w-8 h-8 bg-green-500 rounded-full shadow-lg border-2 border-white" />
-      )}
     </div>
   );
 }
