@@ -1,62 +1,34 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-type WheelProps = {
+interface WheelProps {
   participants: string[];
-  winnerIndex: number | null;
+  winnerIndex: number;
   muted: boolean;
-};
+}
 
 export default function Wheel({ participants, winnerIndex, muted }: WheelProps) {
-  const [angle, setAngle] = useState(0);
+  const [spinning, setSpinning] = useState(false);
 
-  // Spin when we have a winner
-  useEffect(() => {
-    if (winnerIndex !== null && participants.length > 0) {
-      const slice = 360 / participants.length;
-      const winnerCenterDeg = winnerIndex * slice + slice / 2;
-      const rawTarget = 360 - winnerCenterDeg;
-
-      const base = 6 * 360; // 6 full spins
-      const delta = ((rawTarget - (angle % 360)) + 360) % 360;
-      const targetAngle = angle + base + delta;
-
-      setAngle(targetAngle);
-
-      if (!muted) {
-        const audio = new Audio("/click.mp3");
-        audio.play().catch(() => {});
-      }
-    }
-  }, [winnerIndex]);
+  const spin = () => {
+    if (spinning) return;
+    setSpinning(true);
+    setTimeout(() => setSpinning(false), 3000);
+  };
 
   return (
-    <div className="relative">
-      {/* Pointer Triangle (faces down) */}
-      <div className="absolute top-[-20px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-r-[12px] border-b-[20px] border-l-transparent border-r-transparent border-b-red-600 z-10"></div>
-
-      {/* Wheel */}
-      <div
-        className="w-72 h-72 rounded-full border-4 border-gray-800 flex items-center justify-center transition-transform duration-[4200ms] ease-out"
-        style={{ transform: `rotate(${angle}deg)` }}
-      >
-        {participants.map((p, i) => {
-          const slice = 360 / participants.length;
-          return (
-            <div
-              key={i}
-              className={`absolute w-1/2 h-1/2 origin-bottom-left flex items-center justify-end pr-2 text-xs font-bold ${
-                winnerIndex === i ? "bg-green-400 text-white" : "bg-yellow-200"
-              }`}
-              style={{ transform: `rotate(${i * slice}deg) skewY(-${90 - slice}deg)` }}
-            >
-              <span className="transform skewY(${90 - slice}deg) rotate(${slice / 2}deg)">
-                {p}
-              </span>
-            </div>
-          );
-        })}
+    <div className="flex flex-col items-center">
+      <div className={`w-64 h-64 rounded-full border-4 border-green-700 flex items-center justify-center ${spinning ? "animate-spin" : ""}`}>
+        🎡
       </div>
+      <button
+        onClick={spin}
+        className="mt-4 px-6 py-2 rounded-lg bg-green-600 text-white font-bold"
+      >
+        Spin the Wheel
+      </button>
+      {!muted && spinning && <p className="mt-2 text-yellow-700">Spinning...</p>}
+      {!spinning && <p className="mt-2">Winner: {participants[winnerIndex]}</p>}
     </div>
   );
 }
